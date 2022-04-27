@@ -27,4 +27,14 @@ const validateRegistration = (data) => {
 
 module.exports.validateRegistration = validateRegistration;
 
+const validateSignIn = (data) => {
+    const validateMe = hapiJoy.object( {
+        email: hapiJoy.string().email(),
+        password: hapiJoy.string().min(8).max(100)
+    } )
+    return validateMe.validate(data)
+}
+
+module.exports.validateSignIn = validateSignIn;
+
 

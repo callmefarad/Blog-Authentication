@@ -1,5 +1,5 @@
 const userModel = require( '../model/user' )
-const { validateRegistration } = require( '../validateBlog' )
+const { validateRegistration, validateSignIn } = require( '../validateBlog' )
 const bcrypt = require( 'bcrypt' )
 const jwt = require( 'jsonwebtoken' )
 
@@ -11,13 +11,13 @@ const signUp = async ( req, res ) => {
         const { error } = validateRegistration( req.body )
         if ( error ) {
             res.status( 409 ).json( {
-                message: error.message
+                message: error.details[0].message
             })
         } else {
             // verify user
             const oldUser = await userModel.findOne( { email: req.body.email } )
             if ( oldUser ) {
-                res.json({message: `user already existed`})
+                res.json({message: `email already existed`})
             } else {
                 // salt the password
                 const saltedPassword = await bcrypt.genSalt( 10 )
@@ -55,6 +55,56 @@ const signUp = async ( req, res ) => {
     }
 }
 
+// signIn function
+const signIn = async ( req, res ) => {
+    try {
+        const { error } = validateSignIn( req.body )
+        if ( error ) {
+            res.json( {
+                message: error.details[0].message
+            });
+        } else {
+            const user = await userModel.findOne( { email: req.body.email } )
+            if ( !user ) {
+                res.json( {
+                    message: "User not recognized!!!"
+                })
+            } else {
+                const passwordCheck = await bcrypt.compare( req.body.password, user.password )
+                if ( !passwordCheck ) {
+                    res.json({message: 'Invalid password'})
+                } else {
+                    const { password, ...info } = user._doc;
+                    const token = jwt.sign(
+                        // payload or data
+                        {
+                            _id: user._id,
+                            fullName: user.fullName,
+                            // course: user.course,
+                            duration: user.duration,
+                            // username: user.username,
+                            // email: user.email
+                        },
+                        // secrete
+                        'mytoken',
+                        // option
+                        {expiresIn: '2d'}
+                    )
+                    res.json( {
+                        message: `Welcome back ${user.fullName}`,
+                        data: {token}
+                    })
+                }
+            }
+        }
+    } catch ( error ) {
+        res.status( 500 ).json( {
+            status: 500,
+            message: error.message
+        } )
+    }
+}
+
 // get all users
 const allUsers = async ( req, res ) => {
     try {
@@ -82,5 +132,6 @@ const allUsers = async ( req, res ) => {
 // exports all functions
 module.exports = {
     signUp,
+    signIn,
     allUsers
 }
